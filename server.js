@@ -14,6 +14,28 @@ expensesDB.run(`CREATE TABLE IF NOT EXISTS expenses (
   description TEXT NOT NULL
 )`);
 
+app.delete("/expenses/:id", (req, res) => {
+  const id = req.params.id;
+
+  expensesDB.get("SELECT id FROM expenses WHERE id = ?", [id], (error, row) => {
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    if (!row) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    expensesDB.run("DELETE FROM expenses WHERE id = ?", [id], function (deleteError) {
+      if (deleteError) {
+        return res.status(500).json({ error: deleteError.message });
+      }
+      if (!row) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      return res.status(200).json({ message: "Expense successfully deleted" });
+    });
+  });
+});
 
 app.get("/", (req, res) => {
   res.send("Hello from my expense app! You guys are amazing!!! ❤️");

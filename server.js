@@ -19,7 +19,80 @@ app.get("/", (req, res) => {
   res.send("Hello from my expense app! You guys are amazing!!! ❤️");
 });
 
-app.post("/expenses/:id", (req, res) => {
+app.put("/expenses/:id", (req, res) => {
+  const { nameOfExpense, amount, currency, description } = req.body;
+  const expenseId = req.params.id;
+  if (!nameOfExpense || !amount || !currency || !description) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  if (typeof nameOfExpense !== "string" || nameOfExpense.trim() === "" ){
+    return res.status(400).json({ error: "Your expense input must be a non-empty string" });
+
+  }
+  if(typeof amount !== "number" || amount <= 0) {
+    return res.status(400).json({ error: "Amount must be a positive number" });
+  }
+  if (typeof currency !== "string" || currency.trim() === "") {
+    return res.status(400).json({ error: "Currency must be a non-empty string" });
+  }
+  if (typeof description !== "string" || description.trim() === "") {
+    return res.status(400).json({ error: "Description must be a non-empty string" });
+  }
+  if (description.length > 255) {
+    return res.status(400).json({ error: "Description must be less than 255 characters" });
+  }
+  
+
+  expensesDB.get("SELECT id FROM expenses WHERE id = ?", [expenseId], (error, row) => {
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    if (!row) {
+      res.status(404).json({ message: "Expense not found" });
+      return;
+    }
+    expensesDB.run(
+      "UPDATE expenses SET nameOfExpense = ?, amount = ?, currency = ?, description = ? WHERE id = ?",
+      [nameOfExpense, amount, currency, description, expenseId],
+      function (error) {
+        if (error) {
+          res.status(500).json({ error: error.message });
+          return;
+        }
+
+        res.json({ message: "Expense updated successfully!" });
+      },
+    );
+  });
+});
+
+app.get("/expenses", (req, res) => {
+  expensesDB.all("SELECT * FROM expenses", (err, rows ) => {
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "No expenses found" });
+    }
+    res.json(rows);
+  });
+});
+
+app.get("/expenses/:id", (req, res) => {
+  const id = req.params.id;
+  const sql = "SELECT * FROM expenses WHERE id = ?";
+  expensesDB.get(sql, [id], (error, row) => {
+    if (error) {
+      return res.status(500).json({ error: "DB error" });
+    }
+    if (!row) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+    res.json(row);
+  });
+});
+
+
+app.post("/expenses", (req, res) => {
   const nameOfExpense = req.body.nameOfExpense;
   const amount = req.body.amount;
   const currency = req.body.currency;
@@ -45,7 +118,6 @@ app.post("/expenses/:id", (req, res) => {
   if (description.length > 255) {
     return res.status(400).json({ error: "Description must be less than 255 characters" });
   }
-  const id = req.params.id;
   expensesDB.run("INSERT INTO expenses(nameOfExpense, amount, currency, description) VALUES (?, ?, ?, ?)", [nameOfExpense, amount, currency, description]);
   res.status(201).json({ message: "Expense created successfully" });
 });

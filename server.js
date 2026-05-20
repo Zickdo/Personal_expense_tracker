@@ -91,8 +91,50 @@ app.put("/expenses/:id", (req, res) => {
 });
 
 app.get("/expenses", (req, res) => {
-  expensesDB.all("SELECT * FROM expenses", (err, rows ) => {
-    if (rows.length === 0) {
+  const { currency, minAmount, maxAmount, nameOfExpense, description } = req.query;
+
+  let sql = "SELECT * FROM expenses";
+  const conditions = [];
+  const params = [];
+
+  if (currency) {
+    conditions.push("currency = ?");
+    params.push(currency);
+  }
+  if (minAmount !== undefined) {
+    const min = parseFloat(minAmount);
+    if (isNaN(min)) {
+      return res.status(400).json({ error: "Invalid minAmount parameter" });
+    }
+    conditions.push("amount >= ?");
+    params.push(min);
+  }
+  if (maxAmount !== undefined) {
+    const max = parseFloat(maxAmount);
+    if (isNaN(max)) {
+      return res.status(400).json({ error: "Invalid maxAmount parameter" });
+    }
+    conditions.push("amount <= ?");
+    params.push(max);
+  }
+  if (nameOfExpense) {
+    conditions.push("nameOfExpense LIKE ?");
+    params.push(`%${nameOfExpense}%`);
+  }
+  if (description) {
+    conditions.push("description LIKE ?");
+    params.push(`%${description}%`);
+  }
+
+  if (conditions.length > 0) {
+    sql += " WHERE " + conditions.join(" AND ");
+  }
+
+  expensesDB.all(sql, params, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ error: "No expenses found" });
     }
     res.json(rows);

@@ -11,7 +11,31 @@ expensesDB.run(`CREATE TABLE IF NOT EXISTS expenses (
   nameOfExpense TEXT NOT NULL,
   amount REAL NOT NULL,
   currency TEXT NOT NULL,
-  description TEXT NOT NULL
+  description TEXT NOT NULL,
+  categoryID INTEGER,
+  paymentMethodId INTEGER,
+  FOREIGN KEY (categoryID) REFERENCES categories(id),
+  FOREIGN KEY (paymentMethodId) REFERENCES paymentMethods(id)
+)`);
+
+expensesDB.run(`CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT 
+)`);
+
+expensesDB.run(`CREATE TABLE IF NOT EXISTS paymentMethods (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  type TEXT 
+)`);
+
+expensesDB.run(`CREATE TABLE IF NOT EXISTS budgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  categoryId INTEGER NOT NULL,
+  monthYear TEXT NOT NULL,
+  limit REAL NOT NULL,
+  FOREIGN KEY (categoryId) REFERENCES categories(id)
 )`);
 
 app.delete("/expenses/:id", (req, res) => {
@@ -29,17 +53,11 @@ app.delete("/expenses/:id", (req, res) => {
       if (deleteError) {
         return res.status(500).json({ error: deleteError.message });
       }
-      if (!row) {
-        return res.status(404).json({ message: "Expense not found" });
-      }
       return res.status(200).json({ message: "Expense successfully deleted" });
     });
   });
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello from my expense app! You guys are amazing!!! ❤️");
-});
 
 app.put("/expenses/:id", (req, res) => {
   const { nameOfExpense, amount, currency, description } = req.body;
@@ -89,6 +107,7 @@ app.put("/expenses/:id", (req, res) => {
     );
   });
 });
+
 
 app.get("/expenses", (req, res) => {
   const { currency, minAmount, maxAmount, nameOfExpense, description } = req.query;
@@ -155,6 +174,9 @@ app.get("/expenses/:id", (req, res) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.send("Hello from my expense app! You guys are amazing!!! ❤️");
+});
 
 app.post("/expenses", (req, res) => {
   const nameOfExpense = req.body.nameOfExpense;
@@ -184,6 +206,35 @@ app.post("/expenses", (req, res) => {
   }
   expensesDB.run("INSERT INTO expenses(nameOfExpense, amount, currency, description) VALUES (?, ?, ?, ?)", [nameOfExpense, amount, currency, description]);
   res.status(201).json({ message: "Expense created successfully" });
+});
+
+app.post("/categories", (req, res) => {
+  const name = req.body.name;
+  const description = req.body.description;
+
+  if (!name) {
+    return res.status(400).json({ error: "Missing required field: name" });
+  } 
+  if (typeof name !== "string" || name.trim() === "") {
+    return res.status(400).json({ error: "Name must be a non-empty string" });
+  }
+  if (description && (typeof description !== "string" || description.trim() === "")) {
+    return res.status(400).json({ error: "Description must be a non-empty string if provided" });
+  }
+});
+
+app.post("/payment-methods", (req, res) => {
+  const name = req.body.name;
+  const type = req.body.type;
+  if (!name) {
+    return res.status(400).json({ error: "Missing required field: name" });
+  }
+  if (typeof name !== "string" || name.trim() === "") {
+    return res.status(400).json({ error: "Name must be a non-empty string" });
+  }
+  if (type && (typeof type !== "string" || type.trim() === "")) {
+    return res.status(400).json({ error: "Type must be a non-empty string if provided" });
+  }
 });
 app.listen(PORT, () => {
     console.log( `Server is running on port ${PORT}`);

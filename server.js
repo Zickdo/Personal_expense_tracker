@@ -34,7 +34,7 @@ expensesDB.run(`CREATE TABLE IF NOT EXISTS budgets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   categoryId INTEGER NOT NULL,
   monthYear TEXT NOT NULL,
-  limit REAL NOT NULL,
+  "limit" REAL NOT NULL,
   FOREIGN KEY (categoryId) REFERENCES categories(id)
 )`);
 
@@ -221,6 +221,8 @@ app.post("/categories", (req, res) => {
   if (description && (typeof description !== "string" || description.trim() === "")) {
     return res.status(400).json({ error: "Description must be a non-empty string if provided" });
   }
+  expensesDB.run("INSERT INTO categories(name, description) VALUES (?, ?)", [name, description]);
+  res.status(201).json({ message: "Category created successfully" });
 });
 
 app.post("/payment-methods", (req, res) => {
@@ -235,6 +237,29 @@ app.post("/payment-methods", (req, res) => {
   if (type && (typeof type !== "string" || type.trim() === "")) {
     return res.status(400).json({ error: "Type must be a non-empty string if provided" });
   }
+  expensesDB.run("INSERT INTO paymentMethods(name, type) VALUES (?, ?)", [name, type]);
+  res.status(201).json({ message: "Payment method created successfully" });
+});
+
+app.post("/budgets", (req, res) => {
+  const categoryId = req.body.categoryId;
+  const monthYear = req.body.monthYear;
+  const limit = req.body.limit;
+  if (!categoryId || !monthYear || !limit) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  if (typeof categoryId !== "number" || categoryId <= 0) {
+    return res.status(400).json({ error: "Category ID must be a positive number" });
+  }
+  if (typeof monthYear !== "string" || monthYear.trim() === "") {
+    return res.status(400).json({ error: "Month-Year must be a non-empty string" });
+  }
+  if (typeof limit !== "number" || limit < 0) {
+    return res.status(400).json({ error: "Limit must be a non-negative number" });
+  }
+  expensesDB.run("INSERT INTO budgets(categoryId, monthYear, limit) VALUES (?, ?, ?)", [categoryId, monthYear, limit]);
+  res.status(201).json({ message: "Budget created successfully" });
+
 });
 app.listen(PORT, () => {
     console.log( `Server is running on port ${PORT}`);
